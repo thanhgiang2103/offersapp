@@ -40,7 +40,6 @@ func (u *User) Register(conn *pgx.Conn) error {
 	row := conn.QueryRow(context.Background(), "SELECT id FROM user_account WHERE email= $1", u.Email)
 	userLookup := User{}
 	err := row.Scan(&userLookup)
-	fmt.Println(err)
 	if err != pgx.ErrNoRows {
 		return fmt.Errorf("A user with that email already exists")
 	}
@@ -53,9 +52,8 @@ func (u *User) Register(conn *pgx.Conn) error {
 	u.PasswordHash = string(pwdHash)
 
 	//Save object into DB
-	now := time.Now()
-	_, err = conn.Exec(context.Background(), "INSERT INTO user_account (created_at, updated_at, email, password_hash) VALUE($1, $2, $3, $4)", now, now, u.Email, u.PasswordHash, true)
-
+	//now := time.Now()
+	//_, err = conn.Exec(context.Background(), "INSERT INTO user_account (created_at, updated_at, email, password_hash) VALUES ($1, $2, $3, $4)", now, now, u.Email, u.PasswordHash)
 	return err
 }
 
@@ -66,7 +64,7 @@ func (u *User) GetAuthToken() (authToken string, err error) {
 	claims["user_id"] = u.ID
 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	authToken, err = token.SignedString("tokenSecret")
+	authToken, err = token.SignedString([]byte("secretfortoken"))
 	return
 
 }
