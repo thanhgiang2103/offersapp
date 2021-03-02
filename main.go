@@ -21,6 +21,7 @@ func main() {
 	usersGroup := route.Group("user")
 	{
 		usersGroup.POST("register", routes.UsersRegister)
+		usersGroup.POST("login", routes.UserLogin)
 	}
 
 	route.Run(":3000")
