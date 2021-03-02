@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"offersapp/models"
 	"offersapp/routes"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,12 +21,16 @@ func main() {
 
 	route := gin.Default()
 	route.Use(dbMiddleware(*conn))
-	usersGroup := route.Group("user")
+	usersGroup := route.Group("users")
 	{
 		usersGroup.POST("register", routes.UsersRegister)
 		usersGroup.POST("login", routes.UserLogin)
 	}
-
+	itemsGroup := route.Group("items")
+	{
+		itemsGroup.GET("index", routes.ItemIndex)
+		itemsGroup.POST("create", authMiddleWare(), routes.ItemCreate)
+	}
 	route.Run(":3000")
 
 }
@@ -33,7 +40,6 @@ func connectDB() (conn *pgx.Conn, err error) {
 	if err != nil {
 		fmt.Println("Error connecting to DB")
 		fmt.Println(err.Error())
-
 	}
 	_ = conn.Ping(context.Background())
 	return
@@ -43,5 +49,30 @@ func dbMiddleware(conn pgx.Conn) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("db", conn)
 		c.Next()
+	}
+}
+
+func authMiddleWare() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		bearer := c.Request.Header.Get("Authorization")
+		split := strings.Split(bearer, "Bearer ")
+
+		if len(split) < 2 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+			c.Abort()
+			return
+		}
+		token := split[1]
+
+		isValid, userID := models.IsTokenValid(token)
+
+		if isValid == false {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+			c.Abort()
+			return
+		} else {
+			c.Set("user_id", userID)
+			c.Next()
+		}
 	}
 }
