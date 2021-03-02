@@ -61,3 +61,23 @@ func GetAllItems(conn *pgx.Conn) ([]Item, error) {
 	}
 	return items, nil
 }
+
+func GetItemsBeingSoldByUser(userID string, conn *pgx.Conn) ([]Item, error) {
+	rows, err := conn.Query(context.Background(), "SELECT id, title, price_in_cents, note, seller_id FROM item WHERE seller_id = $1", userID)
+
+	if err != nil {
+		fmt.Println("Error getting items ", err)
+		return nil, fmt.Errorf("Error getting items")
+	}
+	var items []Item
+	for rows.Next() {
+		item := Item{}
+		err = rows.Scan(&item.ID, &item.Title, &item.PriceInCents, &item.Notes, &item.SellerID)
+		if err != nil {
+			fmt.Println("Error getting items ", err)
+			continue
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
