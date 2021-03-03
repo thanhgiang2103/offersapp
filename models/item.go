@@ -15,7 +15,7 @@ type Item struct {
 	CreatedAt    time.Time `json:"_"`
 	UpdatedAt    time.Time `json:"_"`
 	Title        string    `json:"title"`
-	Notes        string    `json:"note"`
+	Notes        string    `json:"notes"`
 	SellerID     uuid.UUID `json:"seller"`
 	PriceInCents int64     `json:"price_in_cents"`
 }
@@ -80,4 +80,36 @@ func GetItemsBeingSoldByUser(userID string, conn *pgx.Conn) ([]Item, error) {
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+func FindItemById(id uuid.UUID, conn *pgx.Conn) (Item, error) {
+	row := conn.QueryRow(context.Background(), "SELECT title, note, seller_id, price_in_cents FROM item WHERE id=$1", id)
+	item := Item{
+		ID: id,
+	}
+	err := row.Scan(&item.Title, &item.Notes, &item.SellerID, &item.PriceInCents)
+	if err != nil {
+		return item, fmt.Errorf("The item doesn't exist")
+	}
+	return item, nil
+}
+
+func (i *Item) Update(conn *pgx.Conn) error {
+	i.Title = strings.Trim(i.Title, " ")
+	if len(i.Title) < 1 {
+		return fmt.Errorf("Title must not be empty")
+	}
+	if i.PriceInCents < 0 {
+		i.PriceInCents = 0
+	}
+
+	now := time.Now()
+	_, err := conn.Exec(context.Background(), "UPDATE item SET title=$1, note=$2, price_in_cents = $3, updated_at=$4 WHERE id = $5",
+		i.Title, i.Notes, i.PriceInCents, now, i.ID)
+
+	if err != nil {
+		fmt.Println("Error updating item: ", err)
+		return fmt.Errorf("Error updating item")
+	}
+	return nil
 }
